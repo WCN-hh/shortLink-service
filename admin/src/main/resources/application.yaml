@@ -1,0 +1,25 @@
+server:
+  port: 8000
+spring:
+  datasource:
+    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
+    url: jdbc:shardingsphere:classpath:shardingsphere-config-${database.env:dev}.yaml
+    # ShardingSphere 对 Driver 自定义，实现分库分表等隐藏逻辑
+  #redis配置
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      #password: 123456
+
+    #username: root
+    #password: 123456789
+    #url: jdbc:mysql://127.0.0.1:3306/saassystem?characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&serverTimezone=GMT%2B8
+    #       hikari:
+    #      connection-test-query: select 1
+    #      connection-timeout: 20000
+    #      idle-timeout: 300000
+    #      maximum-pool-size: 5
+    #      minimum-idle: 5
+    # ShardingSphere 配置文件路径
+

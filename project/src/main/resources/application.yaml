@@ -1,0 +1,32 @@
+server:
+  port: 8002
+spring:
+  datasource:
+    url: jdbc:shardingsphere:classpath:shardingsphere-config-${database.env:dev}.yaml
+    #ShardingSphere 对 Driver 自定义，实现分库分表等隐藏逻辑
+    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
+
+  #redis配置
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      #password: 123456
+  #404默认页面
+  mvc:
+    view:
+      prefix: /templates/
+      suffix: .html
+
+short-link:
+  domain:
+    default: localhost
+  stats:
+    locale:
+      #高德地图api_KEY
+      key: yourKey
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath:mapper/*.xml
