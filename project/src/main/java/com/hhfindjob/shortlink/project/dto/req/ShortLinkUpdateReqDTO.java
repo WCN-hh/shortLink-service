@@ -1,9 +1,11 @@
 package com.hhfindjob.shortlink.project.dto.req;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Data;
 
 import java.util.Date;
 
+@Data
 public class ShortLinkUpdateReqDTO {
     /**
      * 域名
@@ -45,4 +47,9 @@ public class ShortLinkUpdateReqDTO {
      * 网站标识
      */
     private String favicon;
+
+    /**
+     * 完整短链接
+     */
+    private String fullShortUrl;
 }

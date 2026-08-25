@@ -5,12 +5,18 @@ package com.hhfindjob.shortlink.project.dto.req;
     创建请求实体
  */
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
 @Data
-public class ShortLinkCreateOrUpdateReqDTO {
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ShortLinkCreateReqDTO {
 
     /**
      * 域名
@@ -53,7 +59,5 @@ public class ShortLinkCreateOrUpdateReqDTO {
      */
     private String favicon;
 
-    /*****额外添加，用作测试，不规范，随时删除*****/
-    private String fullShortUrl;
 
 }
