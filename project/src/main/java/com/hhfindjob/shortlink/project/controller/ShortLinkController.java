@@ -8,6 +8,7 @@ import com.hhfindjob.shortlink.project.dto.req.ShortLinkBatchCreateReqDTO;
 import com.hhfindjob.shortlink.project.dto.req.ShortLinkCreateReqDTO;
 import com.hhfindjob.shortlink.project.dto.req.ShortLinkUpdateReqDTO;
 import com.hhfindjob.shortlink.project.dto.resp.PageSelectRespDTO;
+import com.hhfindjob.shortlink.project.dto.resp.ShortLinkBatchCreateRespDTO;
 import com.hhfindjob.shortlink.project.dto.resp.ShortLinkCreateRespDTO;
 import com.hhfindjob.shortlink.project.dto.resp.ShortLinkGroupCountQueryRespDTO;
 import com.hhfindjob.shortlink.project.service.ShortLinkService;
@@ -40,7 +41,7 @@ public class ShortLinkController {
      * @return
      */
     @PostMapping("/create/batch")
-    public Result batchCreateShortLink(@RequestBody ShortLinkBatchCreateReqDTO dto){
+    public Result<ShortLinkBatchCreateRespDTO> batchCreateShortLink(@RequestBody ShortLinkBatchCreateReqDTO dto){
         return Results.success(service.batchCreateShortLink(dto));
     }
 

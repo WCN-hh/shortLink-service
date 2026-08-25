@@ -12,16 +12,20 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hhfindjob.shortlink.project.common.convention.exception.ServiceException;
 import com.hhfindjob.shortlink.project.common.enums.VailDateTypeEnum;
-import com.hhfindjob.shortlink.project.dao.entity.*;
+import com.hhfindjob.shortlink.project.dao.entity.ShortLinkDO;
+import com.hhfindjob.shortlink.project.dao.entity.ShortLinkGotoDO;
 import com.hhfindjob.shortlink.project.dao.entity.statsDOSet.*;
-import com.hhfindjob.shortlink.project.dao.mapper.*;
+import com.hhfindjob.shortlink.project.dao.mapper.LinkAccessLogsMapper;
+import com.hhfindjob.shortlink.project.dao.mapper.ShortLinkGotoMapper;
+import com.hhfindjob.shortlink.project.dao.mapper.ShortLinkMapper;
 import com.hhfindjob.shortlink.project.dao.mapper.statsMapperSet.*;
 import com.hhfindjob.shortlink.project.dto.req.PageSelectReqDTO;
-import com.hhfindjob.shortlink.project.dto.req.ShortLinkCreateOrUpdateReqDTO;
-import com.hhfindjob.shortlink.project.dto.resp.PageSelectRespDTO;
-import com.hhfindjob.shortlink.project.dto.resp.ShortLinkCreateRespDTO;
-import com.hhfindjob.shortlink.project.dto.resp.ShortLinkGroupCountQueryRespDTO;
+import com.hhfindjob.shortlink.project.dto.req.ShortLinkBatchCreateReqDTO;
+import com.hhfindjob.shortlink.project.dto.req.ShortLinkCreateReqDTO;
+import com.hhfindjob.shortlink.project.dto.req.ShortLinkUpdateReqDTO;
+import com.hhfindjob.shortlink.project.dto.resp.*;
 import com.hhfindjob.shortlink.project.service.ShortLinkService;
+import com.hhfindjob.shortlink.project.service.UrlMetaService;
 import com.hhfindjob.shortlink.project.util.HashUtil;
 import com.hhfindjob.shortlink.project.util.IPUtil;
 import jakarta.servlet.ServletRequest;
@@ -42,10 +46,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static com.hhfindjob.shortlink.project.common.constant.RedisCacheConstant.LOCK_SHORT_LINK_GOTO;
 import static com.hhfindjob.shortlink.project.common.constant.RedisCacheConstant.SHORT_LINK_GOTO_KEY;
@@ -77,6 +78,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     private final LinkNetworkStatsMapper networkStatsMapper;
 
+    private final UrlMetaService urlMetaService;
+
     private final static String DEFAULT_URL="/page/notfound";
 
     @Value("${short-link.domain.default}")
@@ -88,7 +91,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     @Override
     @Transactional
-    public ShortLinkCreateRespDTO createShortLink(ShortLinkCreateOrUpdateReqDTO dto) {
+    public ShortLinkCreateRespDTO createShortLink(ShortLinkCreateReqDTO dto) {
         String shortUri = getShortLink(dto);
 
         ShortLinkDO DO = ShortLinkDO.builder()
@@ -100,7 +103,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .gid(dto.getGid())
                 .enableStatus(0)
                 .describe(dto.getDescribe())
-                .favicon(dto.getFavicon())
+                .favicon(urlMetaService.getFavicon(dto.getOriginUrl()))
                 .totalPv(0)
                 .totalUv(0)
                 .totalUip(0)
@@ -157,7 +160,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     }
 
     @Override
-    public Boolean updateShortLink(ShortLinkCreateOrUpdateReqDTO dto) {
+    public Boolean updateShortLink(ShortLinkUpdateReqDTO dto) {
         if (true){
             return true;
         }
@@ -175,7 +178,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         return update == 1;
     }
 
-    private String getShortLink(ShortLinkCreateOrUpdateReqDTO dto){
+    private String getShortLink(ShortLinkCreateReqDTO dto){
         int count=0;
         String originUrl = dto.getOriginUrl();
         String uri=null;
@@ -253,6 +256,37 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         } finally {
             lock.unlock();
         }
+    }
+
+    @Override
+    public ShortLinkBatchCreateRespDTO batchCreateShortLink(ShortLinkBatchCreateReqDTO dto) {
+
+        List<String> originUrls = dto.getOriginUrls();
+        List<String> describes = dto.getDescribes();
+        List<LinkBaseInfoRespDTO> results=new ArrayList<>();
+        for (int i = 0; i < Math.min(originUrls.size(),describes.size()); i++) {
+            //TODO 可以更简短的实现类的转换
+            ShortLinkCreateReqDTO bean = BeanUtil.toBean(dto, ShortLinkCreateReqDTO.class);
+            bean.setDescribe(describes.get(i));
+            bean.setOriginUrl(originUrls.get(i));
+            try {
+                //TODO 事务不生效
+                ShortLinkCreateRespDTO shortLink = createShortLink(bean);
+                LinkBaseInfoRespDTO info = LinkBaseInfoRespDTO.builder()
+                        .describe(describes.get(i))
+                        .originUrl(shortLink.getOriginUrl())
+                        .fullShortUrl(shortLink.getFullShortUrl())
+                        .build();
+                results.add(info);
+            } catch (Throwable ex){
+                log.error("这个链接的创建出错:{}",originUrls.get(i));
+            }
+        }
+
+        return ShortLinkBatchCreateRespDTO.builder()
+                .total(results.size())
+                .linkInfos(results)
+                .build();
     }
 
     private void redirectFullLink(
