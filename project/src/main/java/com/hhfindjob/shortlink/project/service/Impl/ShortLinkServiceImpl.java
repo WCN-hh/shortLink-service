@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hhfindjob.shortlink.project.common.convention.exception.ClientException;
 import com.hhfindjob.shortlink.project.common.convention.exception.ServiceException;
 import com.hhfindjob.shortlink.project.common.enums.VailDateTypeEnum;
 import com.hhfindjob.shortlink.project.dao.entity.ShortLinkDO;
@@ -99,6 +100,9 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .shortUri(shortUri)
                 .fullShortUrl(String.format("%s:%s/%s",defaultDomain,defaultPort,shortUri))
                 .originUrl(dto.getOriginUrl())
+                .createType(dto.getCreateType())
+                .validDateType(dto.getValidDateType())
+                .validDate(dto.getValidDate())
                 .clickNum(0)
                 .gid(dto.getGid())
                 .enableStatus(0)
@@ -160,22 +164,51 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     }
 
     @Override
-    public Boolean updateShortLink(ShortLinkUpdateReqDTO dto) {
-        if (true){
-            return true;
-        }
-        LambdaUpdateWrapper<ShortLinkDO> wrapper = Wrappers.lambdaUpdate(ShortLinkDO.class)
-                .eq(ShortLinkDO::getGid, dto.getGid())
-                .eq(ShortLinkDO::getFullShortUrl, dto.getFullShortUrl())
-                .eq(ShortLinkDO::getDelFlag, 0)
-                .eq(ShortLinkDO::getEnableStatus, 0)
-                .set(Objects.equals(
-                        dto.getValidDateType(), VailDateTypeEnum.NOTFOREVER.getType()),
-                        ShortLinkDO::getValidDate, null);
+    public Boolean updateShortLink(ShortLinkUpdateReqDTO updateReq) {
 
-        int update = baseMapper.update(
-                BeanUtil.toBean(dto, ShortLinkDO.class), wrapper);
-        return update == 1;
+        LambdaQueryWrapper<ShortLinkDO> wrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
+                .eq(ShortLinkDO::getGid, updateReq.getOriginGid())
+                .eq(ShortLinkDO::getFullShortUrl, updateReq.getFullShortUrl())
+                .eq(ShortLinkDO::getDelFlag, 0)
+                .eq(ShortLinkDO::getEnableStatus, 0);
+        ShortLinkDO oldShortLink = baseMapper.selectOne(wrapper);
+        if (oldShortLink == null){
+            throw new ClientException("短链接不存在");
+        }
+        //允许更改的部分为:完整链接,分组gid,描述,过期时间，过期类型标注
+        ShortLinkDO newshortLink = BeanUtil.toBean(oldShortLink, ShortLinkDO.class);
+        newshortLink.setOriginUrl(updateReq.getOriginUrl());
+        newshortLink.setDescribe(updateReq.getDescribe());
+        newshortLink.setGid(updateReq.getGid());
+        newshortLink.setValidDate(updateReq.getValidDate());
+        newshortLink.setValidDateType(updateReq.getValidDateType());
+
+        if (Objects.equals(newshortLink.getGid(),oldShortLink.getGid())){
+            //gid不改变
+            LambdaUpdateWrapper<ShortLinkDO> wrapperTrue = Wrappers.lambdaUpdate(ShortLinkDO.class)
+                    .eq(ShortLinkDO::getFullShortUrl, newshortLink.getFullShortUrl())
+                    .eq(ShortLinkDO::getGid, newshortLink.getGid())
+                    .eq(ShortLinkDO::getDelFlag, 0)
+                    .eq(ShortLinkDO::getEnableStatus, 0)
+                    .set(Objects.equals(updateReq.getValidDateType(), VailDateTypeEnum.FOREVER.getType())
+                            , ShortLinkDO::getValidDateType, null);
+            baseMapper.update(newshortLink,wrapperTrue);
+        } else {
+            if (true){
+                //应该把老gid传入进来
+                return true;
+            }
+            //TODO 更改gid会同时牵连多张监控表，此处未考虑
+            LambdaQueryWrapper<ShortLinkDO> wrapperFalse = Wrappers.lambdaQuery(ShortLinkDO.class)
+                    .eq(ShortLinkDO::getFullShortUrl, updateReq.getFullShortUrl())
+                    .eq(ShortLinkDO::getGid, newshortLink.getGid())
+                    .eq(ShortLinkDO::getEnableStatus, 0)
+                    .eq(ShortLinkDO::getDelFlag, 0);
+            baseMapper.delete(wrapper);
+            baseMapper.insert(newshortLink);
+        }
+
+        return true;
     }
 
     private String getShortLink(ShortLinkCreateReqDTO dto){
@@ -443,4 +476,6 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .eq(ShortLinkGotoDO::getFullShortUrl, fullShortUrl);
         return gotoMapper.selectOne(wrapper);
     }
+
+
 }

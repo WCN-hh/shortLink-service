@@ -10,7 +10,7 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-public class ShortLinkCreateOrUpdateReqDTO {
+public class ShortLinkCreateReqDTO {
 
     /**
      * 域名
