@@ -1,6 +1,7 @@
 package com.hhfindjob.shortlink.admin.service.Impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -14,7 +15,11 @@ import com.hhfindjob.shortlink.admin.dto.response.group.GroupResponseDTO;
 import com.hhfindjob.shortlink.admin.remote.dto.ShortLinkRemoteService;
 import com.hhfindjob.shortlink.admin.remote.dto.resp.ShortLinkGroupCountQueryRespDTO;
 import com.hhfindjob.shortlink.admin.service.GroupService;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +29,16 @@ import java.util.stream.Collectors;
 
 
 @Service
+@RequiredArgsConstructor
 public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implements GroupService {
 
     ShortLinkRemoteService service=new ShortLinkRemoteService() {
     };
+
+    private final RedissonClient redissonClient;
+
+    @Value("${group.max-num}")
+    private int groupMaxNum;
 
     @Override
     public Boolean saveGruop(String groupName) {
@@ -36,26 +47,41 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
 
     @Override
     public Boolean saveGruop(String userName, String groupName) {
-        String gid ;
-        do {
-            gid = RandomStringUtils.random(6, true, true);
-            LambdaQueryWrapper<GroupDO> wrapper = Wrappers.lambdaQuery(GroupDO.class)
-                    .eq(GroupDO::getGId, gid)
-                    .eq(GroupDO::getUsername,userName);
-            GroupDO groupDO = baseMapper.selectOne(wrapper);
-            if (groupDO == null)
-                break;
-        } while (true);
+        String redisson_lock_key="redisson:group:user" + userName;
+        //达到上限不允许创建
+        RLock rLock = redissonClient.getLock(redisson_lock_key);
+        rLock.lock();
+        try {
+            LambdaQueryWrapper<GroupDO> count = Wrappers.lambdaQuery(GroupDO.class)
+                    .eq(GroupDO::getUsername, userName)
+                    .eq(GroupDO::getDelFlag,0);
+            List<GroupDO> list = baseMapper.selectList(count);
+            if (CollUtil.isNotEmpty(list) && list.size() >= groupMaxNum){
+                throw new ClientException("最多允许创建"+groupMaxNum+"个分组");
+            }
 
-        GroupDO groupDO = GroupDO.builder()
-                .gId(gid)
-                .gName(groupName)
-                .username(userName)
-                .sortOrder(0)
-                .build();
+            String gid ;
+            do {
+                gid = RandomStringUtils.random(6, true, true);
+                LambdaQueryWrapper<GroupDO> wrapper = Wrappers.lambdaQuery(GroupDO.class)
+                        .eq(GroupDO::getGId, gid)
+                        .eq(GroupDO::getUsername,userName);
+                GroupDO groupDO = baseMapper.selectOne(wrapper);
+                if (groupDO == null)
+                    break;
+            } while (true);
 
-        return baseMapper.insert(groupDO) == 1;
+            GroupDO groupDO = GroupDO.builder()
+                    .gId(gid)
+                    .gName(groupName)
+                    .username(userName)
+                    .sortOrder(0)
+                    .build();
 
+            return baseMapper.insert(groupDO) == 1;
+        } finally {
+            rLock.unlock();
+        }
     }
 
     @Override
