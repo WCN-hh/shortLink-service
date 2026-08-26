@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hhfindjob.shortlink.project.common.config.GotoDomainWhiteListConfiguration;
 import com.hhfindjob.shortlink.project.common.convention.exception.ClientException;
 import com.hhfindjob.shortlink.project.common.convention.exception.ServiceException;
 import com.hhfindjob.shortlink.project.common.enums.VailDateTypeEnum;
@@ -81,6 +82,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     private final UrlMetaService urlMetaService;
 
+    private final GotoDomainWhiteListConfiguration gotoDomainWhiteListConfiguration;
+
     private final static String DEFAULT_URL="/page/notfound";
 
     @Value("${short-link.domain.default}")
@@ -93,6 +96,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     @Override
     @Transactional
     public ShortLinkCreateRespDTO createShortLink(ShortLinkCreateReqDTO dto) {
+        verificationWhitelist(dto.getOriginUrl());
         String shortUri = getShortLink(dto);
 
         ShortLinkDO DO = ShortLinkDO.builder()
@@ -165,7 +169,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     @Override
     public Boolean updateShortLink(ShortLinkUpdateReqDTO updateReq) {
-
+        verificationWhitelist(updateReq.getOriginUrl());
         LambdaQueryWrapper<ShortLinkDO> wrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
                 .eq(ShortLinkDO::getGid, updateReq.getOriginGid())
                 .eq(ShortLinkDO::getFullShortUrl, updateReq.getFullShortUrl())
@@ -477,5 +481,19 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         return gotoMapper.selectOne(wrapper);
     }
 
+    private void verificationWhitelist(String originUrl) {
+        Boolean enable = gotoDomainWhiteListConfiguration.getEnable();
+        if (enable == null || !enable) {
+            return;
+        }
+        String domain = IPUtil.extractDomain(originUrl);
+        if (StrUtil.isBlank(domain)) {
+            throw new ClientException("跳转链接填写错误");
+        }
+        List<String> details = gotoDomainWhiteListConfiguration.getDetails();
+        if (!details.contains(domain)) {
+            throw new ClientException("演示环境为避免恶意攻击，请生成以下网站跳转链接：" + gotoDomainWhiteListConfiguration.getNames());
+        }
+    }
 
 }

@@ -1,11 +1,13 @@
 package com.hhfindjob.shortlink.project.util;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.hhfindjob.shortlink.project.dao.entity.statsDOSet.LinkLocaleStatsDO;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -121,5 +123,27 @@ public class IPUtil {
         String string = HttpUtil.get(apiLink, map);
         return JSON.parseObject(string, new TypeReference<>() {
         });
+    }
+    /**
+     * 获取原始链接中的域名
+     * 如果原始链接包含 www 开头的话需要去掉
+     *
+     * @param url 创建或者修改短链接的原始链接
+     * @return 原始链接中的域名
+     */
+    public static String extractDomain(String url) {
+        String domain = null;
+        try {
+            URI uri = new URI(url);
+            String host = uri.getHost();
+            if (StrUtil.isNotBlank(host)) {
+                domain = host;
+                if (domain.startsWith("www.")) {
+                    domain = host.substring(4);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return domain;
     }
 }
