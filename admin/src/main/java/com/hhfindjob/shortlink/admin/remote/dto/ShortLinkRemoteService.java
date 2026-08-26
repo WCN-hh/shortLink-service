@@ -6,11 +6,9 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhfindjob.shortlink.admin.common.convention.result.Result;
-import com.hhfindjob.shortlink.admin.remote.dto.req.PageSelectRecycleReqDTO;
-import com.hhfindjob.shortlink.admin.remote.dto.req.PageSelectReqDTO;
-import com.hhfindjob.shortlink.admin.remote.dto.req.RecycleReqDTO;
-import com.hhfindjob.shortlink.admin.remote.dto.req.ShortLinkCreateOrUpdateReqDTO;
+import com.hhfindjob.shortlink.admin.remote.dto.req.*;
 import com.hhfindjob.shortlink.admin.remote.dto.resp.PageSelectRespDTO;
+import com.hhfindjob.shortlink.admin.remote.dto.resp.ShortLinkBatchCreateRespDTO;
 import com.hhfindjob.shortlink.admin.remote.dto.resp.ShortLinkCreateRespDTO;
 import com.hhfindjob.shortlink.admin.remote.dto.resp.ShortLinkGroupCountQueryRespDTO;
 
@@ -44,9 +42,21 @@ public interface ShortLinkRemoteService {
      * @param dto
      * @return
      */
-    default Result<ShortLinkCreateRespDTO> createShortLink(ShortLinkCreateOrUpdateReqDTO dto){
+    default Result<ShortLinkCreateRespDTO> createShortLink(ShortLinkCreateReqDTO dto){
         String responseBody = HttpUtil.post(
                 "http://localhost:8002/api/short-link/v1/create",
+                JSON.toJSONString(dto));
+        return JSON.parseObject(responseBody,new TypeReference<>(){});
+    }
+
+    /**
+     * 批量创建短链接
+     * @param dto
+     * @return
+     */
+    default Result<ShortLinkBatchCreateRespDTO> batchCreateShortLink(ShortLinkBatchCreateReqDTO dto){
+        String responseBody = HttpUtil.post(
+                "http://localhost:8002/api/short-link/v1/create/batch",
                 JSON.toJSONString(dto));
         return JSON.parseObject(responseBody,new TypeReference<>(){});
     }

@@ -21,6 +21,7 @@ import java.util.List;
 @RequestMapping("/api/short-link/v1")
 @RequiredArgsConstructor
 public class ShortLinkController {
+
     private final ShortLinkService service;
 
     /**
@@ -41,7 +42,8 @@ public class ShortLinkController {
      * @return
      */
     @PostMapping("/create/batch")
-    public Result<ShortLinkBatchCreateRespDTO> batchCreateShortLink(@RequestBody ShortLinkBatchCreateReqDTO dto){
+    public Result<ShortLinkBatchCreateRespDTO> batchCreateShortLink(
+            @RequestBody ShortLinkBatchCreateReqDTO dto){
         return Results.success(service.batchCreateShortLink(dto));
     }
 

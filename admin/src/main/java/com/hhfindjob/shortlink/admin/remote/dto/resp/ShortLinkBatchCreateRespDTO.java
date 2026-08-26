@@ -1,4 +1,4 @@
-package com.hhfindjob.shortlink.project.dto.resp;
+package com.hhfindjob.shortlink.admin.remote.dto.resp;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
