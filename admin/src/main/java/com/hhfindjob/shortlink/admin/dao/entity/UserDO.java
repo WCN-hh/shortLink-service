@@ -3,6 +3,7 @@ package com.hhfindjob.shortlink.admin.dao.entity;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.Date;
@@ -31,6 +32,7 @@ public class UserDO {
     /**
      * 姓名
      */
+    @JsonProperty("realName")
     private String name;
 
     /**

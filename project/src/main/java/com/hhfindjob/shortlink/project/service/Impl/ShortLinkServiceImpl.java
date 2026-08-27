@@ -1,6 +1,7 @@
 package com.hhfindjob.shortlink.project.service.Impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
@@ -154,6 +155,9 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     @Override
     public List<ShortLinkGroupCountQueryRespDTO> listGroupShortLinkCount(List<String> gids) {
         //shortLinkMapper.listGroupShortLinkCount(gids);
+        if (CollUtil.isEmpty(gids)){
+            return new ArrayList<>();
+        }
         QueryWrapper<ShortLinkDO> wrapper = Wrappers.query(new ShortLinkDO())
                 .select("gid,count(*) as shortLinkCount")
                 .in("gid", gids)

@@ -1,6 +1,7 @@
 package com.hhfindjob.shortlink.admin.dto.request.user;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 /**
@@ -21,6 +22,7 @@ public class UserRegistRequestDTO {
     /**
      * 姓名
      */
+    @JsonProperty("realName")
     private String name;
 
     /**

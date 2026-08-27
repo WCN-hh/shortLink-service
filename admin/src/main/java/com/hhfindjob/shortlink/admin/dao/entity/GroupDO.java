@@ -22,6 +22,11 @@ public class GroupDO implements Serializable {
 
     @TableId(type = IdType.AUTO)
     /**
+     * ID
+     */
+    private Long id;
+
+    /**
      * 分组标识
      */
     private String gId;
