@@ -86,18 +86,20 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     private final static String DEFAULT_URL="/page/notfound";
 
-    @Value("${short-link.domain.default}")
+    @Value("${short-link.default.domain}")
     private String defaultDomain;
 
-    private final String defaultPort="8002";
+    @Value("${short-link.default.port}")
+    private String defaultPort;
 
-    private final String defaultProtocol="http";
+    //private final String defaultProtocol="http";
 
     @Override
     @Transactional
     public ShortLinkCreateRespDTO createShortLink(ShortLinkCreateReqDTO dto) {
+
         verificationWhitelist(dto.getOriginUrl());
-        String shortUri = getShortLink(dto);
+        String shortUri = getShortUri(dto);
 
         ShortLinkDO DO = ShortLinkDO.builder()
                 .domain(defaultDomain+":"+defaultPort)
@@ -132,7 +134,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             log.info("短链接:{}重复入库",dto.getDomain()+"/"+ shortUri);
             throw new ServiceException("短链接生成重复");
         }
-        shortUriRegisterCachePenetrationBloomFilter.add("http://"+DO.getFullShortUrl());
+        //"http://"+
+        shortUriRegisterCachePenetrationBloomFilter.add(DO.getFullShortUrl());
         stringRedisTemplate.opsForValue().set(
                 SHORT_LINK_GOTO_KEY +DO.getFullShortUrl(), DO.getOriginUrl()
         );
@@ -142,17 +145,10 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     @Override
     public IPage<PageSelectRespDTO> pageSelect(PageSelectReqDTO dto) {
-//        LambdaQueryWrapper<ShortLinkDO> wrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
-//                .eq(ShortLinkDO::getGid, dto.getGid())
-//                .eq(ShortLinkDO::getDelFlag, 0)
-//                .eq(ShortLinkDO::getEnableStatus, 0)
-//                .orderByDesc(ShortLinkDO::getCreateTime);
-//        IPage<ShortLinkDO> resultPage = baseMapper.selectPage(dto, wrapper);
         IPage<ShortLinkDO> resultPage = baseMapper.pageLink(dto);
-        IPage<PageSelectRespDTO> convert = resultPage.convert(
+        return resultPage.convert(
                 e -> BeanUtil.toBean(e, PageSelectRespDTO.class)
         );
-        return convert;
     }
 
     @Override
@@ -215,7 +211,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         return true;
     }
 
-    private String getShortLink(ShortLinkCreateReqDTO dto){
+    private String getShortUri(ShortLinkCreateReqDTO dto){
         int count=0;
         String originUrl = dto.getOriginUrl();
         String uri=null;
@@ -225,8 +221,9 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             }
 
             uri=HashUtil.hashToBase62(originUrl + count);
-
-            if (!shortUriRegisterCachePenetrationBloomFilter.contains(dto.getDomain()+"/"+uri)){
+            //localhost:8002/uri
+            if (!shortUriRegisterCachePenetrationBloomFilter.contains(
+                    defaultDomain+":"+defaultPort+"/"+uri)  ){
                 break;
             }
 
@@ -243,8 +240,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         //"http://"+
         String fullShortUrl = serverName +":"+defaultPort+ "/" + uri;
         String gid=null;
-        //查布隆过滤器
-        if (!shortUriRegisterCachePenetrationBloomFilter.contains("http://"+fullShortUrl)) {
+        //查布隆过滤器 "http://"+
+        if (!shortUriRegisterCachePenetrationBloomFilter.contains(fullShortUrl)) {
             redirectFullLink(null, gid,fullShortUrl,response,request);
             return;
         }
@@ -366,7 +363,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             stringRedisTemplate.opsForSet().add("link:stats:cookieSet:uv",uv);
         }
 
-        //TODO 到这里就可以返回了，后面的表更新应该丢进其他线程,但是上方还存在一些公用变量，不好拆分
+        //TODO 到这里就可以返回了，后面的表更新应该丢进其他线程,但上方还存在一些公用变量，不好拆分
 
         // ========== 1. 收集基础信息 ==========
         Date today = new Date();

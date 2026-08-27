@@ -19,15 +19,16 @@ spring:
       suffix: .html
 
 short-link:
-  domain:
-    default: localhost
+  default:
+    domain: localhost
+    port: 8002
   stats:
     locale:
       #高德地图api_KEY
       key: yourKey
   goto-domain:
     white-list:
-      enable: true
+      enable: false
       names: '拿个offer,知乎,掘金,博客园'
       details:
         - nageoffer.com
