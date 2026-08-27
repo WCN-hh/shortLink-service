@@ -102,6 +102,10 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
 
         List<ShortLinkGroupCountQueryRespDTO> gidCounts = service.listGroupShortLinkCount(gids).getData();
 
+        if (gidCounts == null){
+            return null;
+        }
+
         Map<String, Integer> map = gidCounts.stream().collect(Collectors.toMap(
                 ShortLinkGroupCountQueryRespDTO::getGid,
                 ShortLinkGroupCountQueryRespDTO::getShortLinkCount

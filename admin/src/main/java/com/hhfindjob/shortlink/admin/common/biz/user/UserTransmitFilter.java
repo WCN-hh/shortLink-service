@@ -3,6 +3,7 @@ package com.hhfindjob.shortlink.admin.common.biz.user;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Lists;
+import com.hhfindjob.shortlink.admin.common.constant.RedisCacheConstant;
 import com.hhfindjob.shortlink.admin.common.convention.exception.ClientException;
 import com.hhfindjob.shortlink.admin.common.convention.result.Results;
 import jakarta.servlet.*;
@@ -18,7 +19,6 @@ import java.util.List;
 /**
  * 用户信息传输过滤器
  *
- * @公众号：马丁玩编程，回复：加群，添加马哥微信（备注：12306）获取项目资料
  */
 @RequiredArgsConstructor
 public class UserTransmitFilter implements Filter {
@@ -52,7 +52,8 @@ public class UserTransmitFilter implements Filter {
                 return;
             }
 
-            Object userInfoJsonStr = stringRedisTemplate.opsForHash().get("login_"+userName,token);
+            Object userInfoJsonStr = stringRedisTemplate.opsForHash().get(
+                    RedisCacheConstant.LOGIN_USER_KEY +userName,token);
 
             if (userInfoJsonStr != null){
                 UserInfoDTO userInfoDTO = JSON.parseObject(userInfoJsonStr.toString(),UserInfoDTO.class);
