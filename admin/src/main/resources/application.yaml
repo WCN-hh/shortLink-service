@@ -24,3 +24,8 @@ spring:
     # ShardingSphere 配置文件路径
 group:
   max-num: 20
+short-link:
+  flow-limit:
+    enable: true
+    time-window: 1
+    max-access-count: 20
