@@ -1,4 +1,4 @@
-package com.hhfindjob.shortlink.admin.common.config;
+package com.hhfindjob.shortlink.admin.config;
 
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RedissonClient;
@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 public class RBloomFilterConfiguration {
 
     /**
-     * 防止用户注册查询数据库的布隆过滤器
+     * 验证用户名是否已使用的布隆过滤器
      */
     @Bean
     public RBloomFilter<String> userRegisterCachePenetrationBloomFilter(RedissonClient redissonClient) {

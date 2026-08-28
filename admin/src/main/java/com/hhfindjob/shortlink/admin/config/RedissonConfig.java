@@ -1,4 +1,4 @@
-package com.hhfindjob.shortlink.admin.common.config;
+package com.hhfindjob.shortlink.admin.config;
 
 
 public class RedissonConfig {

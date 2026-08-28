@@ -1,4 +1,4 @@
-package com.hhfindjob.shortlink.admin.common.config;
+package com.hhfindjob.shortlink.admin.config;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import lombok.extern.slf4j.Slf4j;
@@ -15,9 +15,10 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
     @Override
     public void insertFill(MetaObject metaObject) {
         log.info("开始插入填充...");
+        Date now = new Date();
         //this.strictInsertFill(metaObject, "createUserId", Long.class, 123456L);
-        this.strictInsertFill(metaObject, "createTime", Date.class, new Date());
-        this.strictInsertFill(metaObject, "updateTime", Date.class, new Date());
+        this.strictInsertFill(metaObject, "createTime", Date.class, now);
+        this.strictInsertFill(metaObject, "updateTime", Date.class, now);
     }
 
     @Override
