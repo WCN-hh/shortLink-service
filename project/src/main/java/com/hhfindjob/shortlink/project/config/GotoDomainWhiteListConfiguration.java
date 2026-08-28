@@ -1,4 +1,4 @@
-package com.hhfindjob.shortlink.project.common.config;
+package com.hhfindjob.shortlink.project.config;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more

@@ -1,4 +1,4 @@
-package com.hhfindjob.shortlink.project.common.config;
+package com.hhfindjob.shortlink.project.config;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import jakarta.annotation.PostConstruct;
