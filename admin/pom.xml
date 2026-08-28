@@ -74,6 +74,14 @@
             <artifactId>easyexcel</artifactId>
             <version>3.3.4</version>
         </dependency>
+
+        <!--导出excel用的-->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+            <version>3.3.4</version>
+        </dependency>
+
     </dependencies>
 
 </project>

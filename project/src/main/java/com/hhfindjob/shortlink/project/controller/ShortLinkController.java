@@ -1,5 +1,6 @@
 package com.hhfindjob.shortlink.project.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.hhfindjob.shortlink.project.common.convention.result.Result;
 import com.hhfindjob.shortlink.project.common.convention.result.Results;
@@ -11,6 +12,7 @@ import com.hhfindjob.shortlink.project.dto.resp.PageSelectRespDTO;
 import com.hhfindjob.shortlink.project.dto.resp.ShortLinkBatchCreateRespDTO;
 import com.hhfindjob.shortlink.project.dto.resp.ShortLinkCreateRespDTO;
 import com.hhfindjob.shortlink.project.dto.resp.ShortLinkGroupCountQueryRespDTO;
+import com.hhfindjob.shortlink.project.handler.CustomBlockHandler;
 import com.hhfindjob.shortlink.project.service.ShortLinkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -30,11 +32,14 @@ public class ShortLinkController {
      * @return
      */
     @PostMapping("/create")
+    @SentinelResource(
+            value = "create_short-link",
+            blockHandler = "createShortLinkBlockHandlerMethod",
+            blockHandlerClass = CustomBlockHandler.class
+    )
     public Result<ShortLinkCreateRespDTO> createShortLink(@RequestBody ShortLinkCreateReqDTO dto){
         return Results.success(service.createShortLink(dto));
     }
-
-    /************上方调试完毕**************/
 
     /**
      * 批量创建短链接
