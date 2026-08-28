@@ -11,7 +11,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.hhfindjob.shortlink.project.common.config.GotoDomainWhiteListConfiguration;
+import com.hhfindjob.shortlink.project.config.GotoDomainWhiteListConfiguration;
 import com.hhfindjob.shortlink.project.common.convention.exception.ClientException;
 import com.hhfindjob.shortlink.project.common.convention.exception.ServiceException;
 import com.hhfindjob.shortlink.project.common.enums.VailDateTypeEnum;
