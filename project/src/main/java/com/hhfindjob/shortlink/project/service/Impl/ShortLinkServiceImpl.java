@@ -331,6 +331,15 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .build();
     }
 
+    @Override
+    public void shortLinkStats(String fullShortUrl, String gid, ShortLinkStatsRecordDTO record){
+        Map<String, String> producerMap = new HashMap<>();
+        producerMap.put("fullShortUrl", fullShortUrl);
+        producerMap.put("gid", gid);
+        producerMap.put("record", JSON.toJSONString(record));
+        shortLinkStatsSaveProducer.send(producerMap);
+    }
+
     private void redirectFullLink(
             String originUrl, String gid,String fullShortUrl,
             ServletResponse response, ServletRequest request) throws IOException {
@@ -415,13 +424,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         }
     }
 
-    private void shortLinkStats(String fullShortUrl, String gid, ShortLinkStatsRecordDTO record){
-        Map<String, String> producerMap = new HashMap<>();
-        producerMap.put("fullShortUrl", fullShortUrl);
-        producerMap.put("gid", gid);
-        producerMap.put("record", JSON.toJSONString(record));
-        shortLinkStatsSaveProducer.send(producerMap);
-    }
+
 
     //弃用
     private LinkLocaleStatsDO insertLocaleStats(String gid, String fullShortUrl, String IP, Date today) {

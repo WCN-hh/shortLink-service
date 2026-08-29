@@ -3,6 +3,7 @@ package com.hhfindjob.shortlink.project.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.hhfindjob.shortlink.project.dao.entity.ShortLinkDO;
+import com.hhfindjob.shortlink.project.dto.biz.ShortLinkStatsRecordDTO;
 import com.hhfindjob.shortlink.project.dto.req.PageSelectReqDTO;
 import com.hhfindjob.shortlink.project.dto.req.ShortLinkBatchCreateReqDTO;
 import com.hhfindjob.shortlink.project.dto.req.ShortLinkCreateReqDTO;
@@ -28,4 +29,6 @@ public interface ShortLinkService extends IService<ShortLinkDO> {
     void restoreShortLink(String uri, ServletRequest request, ServletResponse response);
 
     ShortLinkBatchCreateRespDTO batchCreateShortLink(ShortLinkBatchCreateReqDTO dto);
+
+    void shortLinkStats(String fullShortUrl, String gid, ShortLinkStatsRecordDTO record);
 }

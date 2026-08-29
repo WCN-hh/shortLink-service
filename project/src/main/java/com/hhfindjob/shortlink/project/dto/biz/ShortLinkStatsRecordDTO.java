@@ -33,6 +33,11 @@ import java.util.Date;
 public class ShortLinkStatsRecordDTO {
 
     /**
+     * 消息队列唯一标识
+     */
+    private String keys;
+
+    /**
      * 完整短链接
      */
     private String fullShortUrl;
