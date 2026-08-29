@@ -5,28 +5,31 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.hhfindjob.shortlink.project.config.GotoDomainWhiteListConfiguration;
 import com.hhfindjob.shortlink.project.common.convention.exception.ClientException;
 import com.hhfindjob.shortlink.project.common.convention.exception.ServiceException;
 import com.hhfindjob.shortlink.project.common.enums.VailDateTypeEnum;
+import com.hhfindjob.shortlink.project.config.GotoDomainWhiteListConfiguration;
 import com.hhfindjob.shortlink.project.dao.entity.ShortLinkDO;
 import com.hhfindjob.shortlink.project.dao.entity.ShortLinkGotoDO;
-import com.hhfindjob.shortlink.project.dao.entity.statsDOSet.*;
+import com.hhfindjob.shortlink.project.dao.entity.statsDOSet.LinkLocaleStatsDO;
 import com.hhfindjob.shortlink.project.dao.mapper.LinkAccessLogsMapper;
 import com.hhfindjob.shortlink.project.dao.mapper.ShortLinkGotoMapper;
 import com.hhfindjob.shortlink.project.dao.mapper.ShortLinkMapper;
 import com.hhfindjob.shortlink.project.dao.mapper.statsMapperSet.*;
+import com.hhfindjob.shortlink.project.dto.biz.ShortLinkStatsRecordDTO;
 import com.hhfindjob.shortlink.project.dto.req.PageSelectReqDTO;
 import com.hhfindjob.shortlink.project.dto.req.ShortLinkBatchCreateReqDTO;
 import com.hhfindjob.shortlink.project.dto.req.ShortLinkCreateReqDTO;
 import com.hhfindjob.shortlink.project.dto.req.ShortLinkUpdateReqDTO;
 import com.hhfindjob.shortlink.project.dto.resp.*;
+import com.hhfindjob.shortlink.project.mq.producer.ShortLinkStatsSaveProducer;
 import com.hhfindjob.shortlink.project.service.ShortLinkService;
 import com.hhfindjob.shortlink.project.service.UrlMetaService;
 import com.hhfindjob.shortlink.project.util.HashUtil;
@@ -82,6 +85,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     private final LinkNetworkStatsMapper networkStatsMapper;
 
     private final UrlMetaService urlMetaService;
+
+    private final ShortLinkStatsSaveProducer shortLinkStatsSaveProducer;
 
     private final GotoDomainWhiteListConfiguration gotoDomainWhiteListConfiguration;
 
@@ -303,7 +308,6 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         List<String> describes = dto.getDescribes();
         List<LinkBaseInfoRespDTO> results=new ArrayList<>();
         for (int i = 0; i < Math.min(originUrls.size(),describes.size()); i++) {
-            //TODO 可以更简短的实现类的转换
             ShortLinkCreateReqDTO bean = BeanUtil.toBean(dto, ShortLinkCreateReqDTO.class);
             bean.setDescribe(describes.get(i));
             bean.setOriginUrl(originUrls.get(i));
@@ -335,11 +339,13 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             ((HttpServletResponse)response).sendRedirect(DEFAULT_URL);
             return;
         }
-        counter(gid,fullShortUrl,(HttpServletRequest)request,response);
+
+        ShortLinkStatsRecordDTO record = buildLinkStatsRecordAndSetUser(fullShortUrl, (HttpServletRequest) request, response);
+        shortLinkStats(fullShortUrl,gid,record);
         ((HttpServletResponse)response).sendRedirect(originUrl);
     }
 
-    private void counter(String gid,String fullShortUrl, HttpServletRequest request,ServletResponse response){
+    private ShortLinkStatsRecordDTO buildLinkStatsRecordAndSetUser(String fullShortUrl, HttpServletRequest request, ServletResponse response){
         //cookie检查uv，没有则塞入，同步缓存
         Cookie[] cookies = request.getCookies();
         String uv=null;
@@ -367,114 +373,26 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             stringRedisTemplate.opsForSet().add("link:stats:cookieSet:uv",uv);
         }
 
-        //TODO 到这里就可以返回了，后面的表更新应该丢进其他线程,但上方还存在一些公用变量，不好拆分
-
-        // ========== 1. 收集基础信息 ==========
-        Date today = new Date();
-
-        String os = IPUtil.getOs(request);
+        Date today=new Date();
         String ip = IPUtil.getActualIp(request);
-        String device = IPUtil.getDevice(request);
-        String browser = IPUtil.getBrowser(request);
-        String network = IPUtil.getNetwork(request);
-
-        int hour= DateUtil.hour(today,true);
-        int week = DateUtil.dayOfWeekEnum(today).getValue();
-        // ====================================
-
         Long added = stringRedisTemplate.opsForSet().add("link:stats:cookieSet:uip", ip);
         boolean ipInSet = added != null && added == 0;
-
-        if (StrUtil.isBlank(gid)){
-            //TODO 应该考虑多个环节的值为空的问题
-            gid = getGotoDO(fullShortUrl).getGid();
-        }
-
-        //基础访问量表数据更新
-        //uv，uip做去重
-        LinkAccessStatsDO linkAccessStatsDO = LinkAccessStatsDO.builder()
-                .pv(1)
-                .gid(gid)
-                .hour(hour)
-                .date(today)
-                .weekday(week)
-                .uip(ipInSet ? 0:1)
-                .fullShortUrl(fullShortUrl)
-                .uv(Boolean.TRUE.equals(uvInSet) ? 0:1)
-                .build();
-        accessStatsMapper.insertAccessStats(linkAccessStatsDO);
-
-        //地区表数据更新
-        LinkLocaleStatsDO localeDO = insertLocaleStats(gid, fullShortUrl, ip, today);
-
-        //操作系统记录表 拿os
-        LinkOsStatsDO osStatsDO = LinkOsStatsDO.builder()
-                .cnt(1)
-                .os(os)
-                .gid(gid)
-                .date(today)
-                .fullShortUrl(fullShortUrl)
-                .build();
-        osStatsMapper.insertOsStats(osStatsDO);
-
-        //浏览器记录表
-        LinkBrowserStatsDO browserStatsDO = LinkBrowserStatsDO.builder()
-                .cnt(1)
-                .gid(gid)
-                .date(today)
-                .browser(browser)
-                .fullShortUrl(fullShortUrl)
-                .build();
-        browserStatsMapper.insertBrowserStats(browserStatsDO);
-
-        //设备记录表
-        LinkDeviceStatsDO deviceStatsDO = LinkDeviceStatsDO.builder()
-                .cnt(1)
-                .gid(gid)
-                .date(today)
-                .device(device)
-                .fullShortUrl(fullShortUrl)
-                .build();
-        deviceStatsMapper.insertDeviceStats(deviceStatsDO);
-
-        //网络记录表
-        LinkNetworkStatsDO networkStatsDO = LinkNetworkStatsDO.builder()
-                .cnt(1)
-                .gid(gid)
-                .date(today)
-                .network(network)
-                .fullShortUrl(fullShortUrl)
-                .build();
-        networkStatsMapper.insertNetworkStats(networkStatsDO);
-
-        //访问日志表 最后记录
-        LinkAccessLogsDO accessLogsDO = LinkAccessLogsDO.builder()
-                .os(os)
+        return ShortLinkStatsRecordDTO.builder()
                 .ip(ip)
-                .user(uv)
-                .gid(gid)
-                .device(device)
-                .browser(browser)
-                .network(network)
+                .uv(uv)
+                .today(today)
+                .uvInSet(uvInSet)
+                .uipInSet(ipInSet)
+                .os(IPUtil.getOs(request))
                 .fullShortUrl(fullShortUrl)
-                .locale(StrUtil.join("-","中国",localeDO.getProvince(),localeDO.getCity()))
+                .device(IPUtil.getDevice(request))
+                .browser(IPUtil.getBrowser(request))
+                .network(IPUtil.getNetwork(request))
+                .hour(DateUtil.hour(today,true))
+                .week(DateUtil.dayOfWeekEnum(today).getIso8601Value())
                 .build();
-        accessLogsMapper.insert(accessLogsDO);
-        baseMapper.increment(1,Boolean.TRUE.equals(uvInSet) ? 0:1,ipInSet ? 0:1,gid,fullShortUrl);
     }
 
-    private LinkLocaleStatsDO insertLocaleStats(String gid, String fullShortUrl, String IP, Date today) {
-        LinkLocaleStatsDO localeDO = IPUtil.getLocaleStatsDOByIP(IP);
-        if (localeDO.getProvince() != null){
-            localeDO.setCnt(1);
-            localeDO.setGid(gid);
-            localeDO.setDate(today);
-            localeDO.setCountry("中国");
-            localeDO.setFullShortUrl(fullShortUrl);
-            localeStatsMapper.insertLocaleStats(localeDO);
-        }
-        return localeDO;
-    }
 
     private ShortLinkGotoDO getGotoDO(String fullShortUrl){
         LambdaQueryWrapper<ShortLinkGotoDO> wrapper = Wrappers.lambdaQuery(ShortLinkGotoDO.class)
@@ -497,4 +415,25 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         }
     }
 
+    private void shortLinkStats(String fullShortUrl, String gid, ShortLinkStatsRecordDTO record){
+        Map<String, String> producerMap = new HashMap<>();
+        producerMap.put("fullShortUrl", fullShortUrl);
+        producerMap.put("gid", gid);
+        producerMap.put("record", JSON.toJSONString(record));
+        shortLinkStatsSaveProducer.send(producerMap);
+    }
+
+    //弃用
+    private LinkLocaleStatsDO insertLocaleStats(String gid, String fullShortUrl, String IP, Date today) {
+        LinkLocaleStatsDO localeDO = IPUtil.getLocaleStatsDOByIP(IP);
+        if (localeDO.getProvince() != null){
+            localeDO.setCnt(1);
+            localeDO.setGid(gid);
+            localeDO.setDate(today);
+            localeDO.setCountry("中国");
+            localeDO.setFullShortUrl(fullShortUrl);
+            localeStatsMapper.insertLocaleStats(localeDO);
+        }
+        return localeDO;
+    }
 }

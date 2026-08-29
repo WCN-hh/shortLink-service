@@ -6,6 +6,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.hhfindjob.shortlink.project.dao.entity.statsDOSet.LinkLocaleStatsDO;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -13,10 +14,11 @@ import java.util.Map;
 
 public class IPUtil {
 
-    //@Value("${short-link.stats.locale.key}")
-    private static final String aMapKey="6dd64639ce059ff42d02e9e442556033";
+    @Value("${short-link.stats.locale.key}")
+    private static String aMapKey;
 
     private static final String apiLink="https://restapi.amap.com/v3/ip";
+
     /**
      * 获取请求的 IP 地址
      * @param request

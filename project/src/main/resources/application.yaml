@@ -11,6 +11,9 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
+      channel-topic:
+        short-link-stats: 'short_link:stats-stream'
+        short-link-stats-group: 'short_link:stats-stream:only-group'
       #password: 123456
   #404默认页面
   mvc:
@@ -25,7 +28,7 @@ short-link:
   stats:
     locale:
       #高德地图api_KEY
-      key: yourKey
+      key: 6dd64639ce059ff42d02e9e442556033
   goto-domain:
     white-list:
       enable: false
